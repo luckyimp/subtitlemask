@@ -8,14 +8,17 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.subtitlemask.app.MainActivity
 import com.subtitlemask.app.R
@@ -38,6 +41,7 @@ class SubtitleMaskService : Service() {
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
     private lateinit var layoutParams: WindowManager.LayoutParams
+    private var isViewAdded = false
 
     private var maskAlpha = 0.95f
     private var maskColor = Color.BLACK
@@ -53,7 +57,22 @@ class SubtitleMaskService : Service() {
         super.onCreate()
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, buildNotification())
+            }
+        } catch (e: Exception) {
+            Log.e("SubtitleMaskService", "startForeground failed", e)
+            try {
+                startForeground(NOTIFICATION_ID, buildNotification())
+            } catch (ignored: Exception) {}
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -87,17 +106,19 @@ class SubtitleMaskService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        val displayMetrics = resources.displayMetrics
         layoutParams = WindowManager.LayoutParams(
             maskWidth,
             maskHeight,
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.CENTER
-            x = 0
-            y = dpToPx(200)
+            gravity = Gravity.TOP or Gravity.START
+            x = (displayMetrics.widthPixels - maskWidth).coerceAtLeast(0) / 2
+            y = (displayMetrics.heightPixels * 0.70f).toInt()
         }
 
         val inflater = LayoutInflater.from(this)
@@ -108,7 +129,14 @@ class SubtitleMaskService : Service() {
         val btnClose = overlayView!!.findViewById<ImageView>(R.id.btnClose)
         val handleResize = overlayView!!.findViewById<View>(R.id.handleResize)
 
-        updateMaskAppearance()
+        // 应用初始视图样式
+        val drawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(maskColor)
+            cornerRadius = this@SubtitleMaskService.cornerRadius
+        }
+        maskBar.background = drawable
+        maskBar.alpha = maskAlpha
 
         // 单指拖拽自由移动
         var initialX = 0
@@ -128,7 +156,13 @@ class SubtitleMaskService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     layoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
                     layoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
-                    windowManager.updateViewLayout(overlayView, layoutParams)
+                    if (isViewAdded && overlayView != null) {
+                        try {
+                            windowManager.updateViewLayout(overlayView, layoutParams)
+                        } catch (e: Exception) {
+                            Log.e("SubtitleMaskService", "updateViewLayout drag error", e)
+                        }
+                    }
                     true
                 }
                 else -> false
@@ -152,7 +186,13 @@ class SubtitleMaskService : Service() {
                     val deltaY = (event.rawY - initialTouchY).toInt()
                     layoutParams.width = max(dpToPx(120), startW + deltaX * 2)
                     layoutParams.height = max(dpToPx(30), startH + deltaY * 2)
-                    windowManager.updateViewLayout(overlayView, layoutParams)
+                    if (isViewAdded && overlayView != null) {
+                        try {
+                            windowManager.updateViewLayout(overlayView, layoutParams)
+                        } catch (e: Exception) {
+                            Log.e("SubtitleMaskService", "updateViewLayout resize error", e)
+                        }
+                    }
                     true
                 }
                 else -> false
@@ -167,7 +207,14 @@ class SubtitleMaskService : Service() {
             stopSelf()
         }
 
-        windowManager.addView(overlayView, layoutParams)
+        // 安全添加到 WindowManager
+        try {
+            windowManager.addView(overlayView, layoutParams)
+            isViewAdded = true
+        } catch (e: Exception) {
+            Log.e("SubtitleMaskService", "addView failed", e)
+            Toast.makeText(this, "悬浮窗加载失败: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun togglePeek() {
@@ -194,9 +241,15 @@ class SubtitleMaskService : Service() {
         maskBar.background = drawable
         maskBar.alpha = if (isTemporaryHidden) 0.08f else maskAlpha
 
-        layoutParams.width = maskWidth
-        layoutParams.height = maskHeight
-        windowManager.updateViewLayout(overlayView, layoutParams)
+        if (isViewAdded && overlayView != null) {
+            layoutParams.width = maskWidth
+            layoutParams.height = maskHeight
+            try {
+                windowManager.updateViewLayout(overlayView, layoutParams)
+            } catch (e: Exception) {
+                Log.e("SubtitleMaskService", "updateMaskAppearance error", e)
+            }
+        }
     }
 
     private fun createNotificationChannel() {
@@ -215,12 +268,14 @@ class SubtitleMaskService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val openIntent = Intent(this, MainActivity::class.java)
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
             openIntent,
-            PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -229,6 +284,8 @@ class SubtitleMaskService : Service() {
             .setSmallIcon(R.drawable.ic_mask_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
     }
 
@@ -239,9 +296,14 @@ class SubtitleMaskService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        overlayView?.let {
-            windowManager.removeView(it)
+        if (isViewAdded && overlayView != null) {
+            try {
+                windowManager.removeView(overlayView)
+            } catch (e: Exception) {
+                Log.e("SubtitleMaskService", "removeView failed", e)
+            }
             overlayView = null
+            isViewAdded = false
         }
     }
 }

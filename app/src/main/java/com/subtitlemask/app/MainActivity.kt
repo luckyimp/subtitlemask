@@ -98,16 +98,26 @@ class MainActivity : ComponentActivity() {
             putExtra(SubtitleMaskService.EXTRA_RADIUS, radiusDp)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+            Toast.makeText(this, "悬浮遮挡条已在前台开启", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "启动服务异常: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun stopMaskService() {
-        val serviceIntent = Intent(this, SubtitleMaskService::class.java)
-        stopService(serviceIntent)
+        try {
+            val serviceIntent = Intent(this, SubtitleMaskService::class.java)
+            stopService(serviceIntent)
+            Toast.makeText(this, "悬浮遮挡条已关闭", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            // ignore
+        }
     }
 }
 
