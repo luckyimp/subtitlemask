@@ -21,17 +21,40 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew || true
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Locate Project & Prepare Wrapper
+        run: |
+          # 自动寻找包含 settings.gradle.kts 的目录（防止将解压后的子目录直接 push 造成路径错层）
+          PROJ_DIR=$(find . -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1 | xargs dirname)
+          if [ -z "$PROJ_DIR" ]; then
+            PROJ_DIR="."
+          fi
+          echo "PROJECT_DIR=$PROJ_DIR" >> $GITHUB_ENV
+          echo "Detected project root at: $PROJ_DIR"
+          cd "$PROJ_DIR"
+
+          # 自动补全 gradle wrapper
+          if [ ! -f "gradlew" ] || [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "Initializing Gradle wrapper..."
+            gradle wrapper --gradle-version 8.9 --distribution-type bin
+          fi
+          chmod +x ./gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
-      - name: Upload Signed Debug APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: SubtitleMask-Debug-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            **/app/build/outputs/apk/debug/app-debug.apk
+            **/build/outputs/apk/debug/*.apk
           if-no-files-found: error

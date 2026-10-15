@@ -3,14 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- 主遮挡背景条 (支持平滑圆角、拖拽监听) -->
+    <!-- 主遮挡背景条 -->
     <View
         android:id="@+id/viewMaskBar"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_margin="4dp" />
 
-    <!-- 顶部极简悬浮微型控制栏 -->
+    <!-- 顶部微型控制栏 -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -22,7 +22,6 @@
         android:paddingHorizontal="4dp"
         android:paddingVertical="2dp">
 
-        <!-- 👁️ 眼睛图标：临时偷瞄/隐藏遮挡条 -->
         <ImageView
             android:id="@+id/btnPeek"
             android:layout_width="24dp"
@@ -37,7 +36,6 @@
             android:layout_marginHorizontal="2dp"
             android:background="#44FFFFFF" />
 
-        <!-- ❌ 关闭图标：停止前台服务并销毁悬浮窗 -->
         <ImageView
             android:id="@+id/btnClose"
             android:layout_width="24dp"
@@ -47,7 +45,6 @@
             android:src="@drawable/ic_close" />
     </LinearLayout>
 
-    <!-- 右下角拉伸缩放手柄 -->
     <ImageView
         android:id="@+id/handleResize"
         android:layout_width="22dp"

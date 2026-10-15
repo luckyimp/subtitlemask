@@ -39,7 +39,6 @@ class SubtitleMaskService : Service() {
     private var overlayView: View? = null
     private lateinit var layoutParams: WindowManager.LayoutParams
 
-    // 配置参数
     private var maskAlpha = 0.95f
     private var maskColor = Color.BLACK
     private var maskWidth = 600
@@ -81,7 +80,6 @@ class SubtitleMaskService : Service() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun initOverlayView() {
-        // 1. 初始化 WindowManager.LayoutParams
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -99,10 +97,9 @@ class SubtitleMaskService : Service() {
         ).apply {
             gravity = Gravity.CENTER
             x = 0
-            y = dpToPx(200) // 默认置于屏幕中下方字幕位置
+            y = dpToPx(200)
         }
 
-        // 2. 构建悬浮窗根布局
         val inflater = LayoutInflater.from(this)
         overlayView = inflater.inflate(R.layout.layout_subtitle_mask, null)
 
@@ -113,7 +110,7 @@ class SubtitleMaskService : Service() {
 
         updateMaskAppearance()
 
-        // 3. 单指拖拽自由移动 (OnTouchListener)
+        // 单指拖拽自由移动
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -138,7 +135,7 @@ class SubtitleMaskService : Service() {
             }
         }
 
-        // 4. 边缘拉伸/尺寸调整句柄
+        // 边缘拉伸手柄
         var startW = 0
         var startH = 0
         handleResize.setOnTouchListener { _, event ->
@@ -162,12 +159,10 @@ class SubtitleMaskService : Service() {
             }
         }
 
-        // 5. 👁️ 眼睛图标：临时隐藏/透视字幕
         btnEye.setOnClickListener {
             togglePeek()
         }
 
-        // 6. ❌ 关闭图标：销毁前台服务
         btnClose.setOnClickListener {
             stopSelf()
         }
@@ -181,7 +176,7 @@ class SubtitleMaskService : Service() {
         val btnEye = overlayView?.findViewById<ImageView>(R.id.btnPeek) ?: return
 
         if (isTemporaryHidden) {
-            maskBar.alpha = 0.08f // 极低不透明度，透视底层字幕
+            maskBar.alpha = 0.08f
             btnEye.setImageResource(R.drawable.ic_eye_off)
         } else {
             maskBar.alpha = maskAlpha
