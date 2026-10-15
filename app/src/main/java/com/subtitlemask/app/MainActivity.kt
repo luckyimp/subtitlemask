@@ -55,9 +55,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     SubtitleMaskScreen(
                         onRequestPermission = { checkAndRequestOverlayPermission() },
-                        onToggleService = { isRunning, alpha, colorInt, width, height, radius ->
+                        onToggleService = { isRunning, alpha, colorInt, width, height, radius, showBall, ballAlpha ->
                             if (isRunning) {
-                                startMaskService(alpha, colorInt, width, height, radius)
+                                startMaskService(alpha, colorInt, width, height, radius, showBall, ballAlpha)
                             } else {
                                 stopMaskService()
                             }
@@ -83,7 +83,9 @@ class MainActivity : ComponentActivity() {
         colorInt: Int,
         widthDp: Int,
         heightDp: Int,
-        radiusDp: Int
+        radiusDp: Int,
+        showBall: Boolean,
+        ballAlpha: Float
     ) {
         if (!Settings.canDrawOverlays(this)) {
             checkAndRequestOverlayPermission()
@@ -96,6 +98,8 @@ class MainActivity : ComponentActivity() {
             putExtra(SubtitleMaskService.EXTRA_WIDTH, widthDp)
             putExtra(SubtitleMaskService.EXTRA_HEIGHT, heightDp)
             putExtra(SubtitleMaskService.EXTRA_RADIUS, radiusDp)
+            putExtra(SubtitleMaskService.EXTRA_SHOW_BALL, showBall)
+            putExtra(SubtitleMaskService.EXTRA_BALL_IDLE_ALPHA, ballAlpha)
         }
 
         try {
@@ -104,7 +108,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 startService(serviceIntent)
             }
-            Toast.makeText(this, "悬浮遮挡条已在前台开启", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "悬浮遮挡条与侧边悬浮球已开启", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, "启动服务异常: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
@@ -114,7 +118,7 @@ class MainActivity : ComponentActivity() {
         try {
             val serviceIntent = Intent(this, SubtitleMaskService::class.java)
             stopService(serviceIntent)
-            Toast.makeText(this, "悬浮遮挡条已关闭", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "悬浮遮挡条已完全关闭", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             // ignore
         }
@@ -125,7 +129,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SubtitleMaskScreen(
     onRequestPermission: () -> Unit,
-    onToggleService: (Boolean, Float, Int, Int, Int, Int) -> Unit
+    onToggleService: (Boolean, Float, Int, Int, Int, Int, Boolean, Float) -> Unit
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -136,6 +140,8 @@ fun SubtitleMaskScreen(
     var barWidth by remember { mutableIntStateOf(320) }
     var barHeight by remember { mutableIntStateOf(52) }
     var cornerRadius by remember { mutableIntStateOf(12) }
+    var showFloatingBall by remember { mutableStateOf(true) }
+    var ballIdleAlpha by remember { mutableFloatStateOf(0.35f) }
 
     val presetColors = listOf(
         Color(0xFF000000) to "纯黑 OLED",
@@ -143,6 +149,12 @@ fun SubtitleMaskScreen(
         Color(0xFF2C3E50) to "午夜蓝",
         Color(0xFFFFFFFF) to "纯白"
     )
+
+    fun notifyUpdate() {
+        if (isServiceRunning) {
+            onToggleService(true, alphaValue, selectedColor.toArgb(), barWidth, barHeight, cornerRadius, showFloatingBall, ballIdleAlpha)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -241,7 +253,7 @@ fun SubtitleMaskScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = if (isServiceRunning) "可通过拖拽调整位置、双指缩放调整尺寸" else "开启后将在屏幕中央显示遮盖条",
+                            text = if (isServiceRunning) "轻触侧边悬浮球随时收纳/呼出，支持自动磁吸贴边" else "开启后将在屏幕侧边显示悬浮球与字幕遮挡条",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -260,64 +272,76 @@ fun SubtitleMaskScreen(
                                 selectedColor.toArgb(),
                                 barWidth,
                                 barHeight,
-                                cornerRadius
+                                cornerRadius,
+                                showFloatingBall,
+                                ballIdleAlpha
                             )
                         }
                     )
                 }
             }
 
-            // 实时外观预览卡片
+            // 侧边悬浮球控制卡片
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "遮挡效果实时预览",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(110.dp)
-                            .background(
-                                color = Color(0xFF1E293B),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
-                        contentAlignment = Alignment.Center
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 模拟底层的字幕文本
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column {
                             Text(
-                                "English subtitles for listening practice",
-                                color = Color.Yellow,
-                                fontSize = 14.sp
+                                "侧边极简悬浮球 (Floating Bubble)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "外语听力训练专用遮挡层演示",
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 13.sp
+                                "单击展开/收纳遮挡条，拖拽松手自动贴边",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = showFloatingBall,
+                            onCheckedChange = {
+                                showFloatingBall = it
+                                notifyUpdate()
+                            }
+                        )
+                    }
+
+                    if (showFloatingBall) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("静止 2.5 秒后弱化透明度", style = MaterialTheme.typography.bodyMedium)
+                                Text("${(ballIdleAlpha * 100).toInt()}%", fontWeight = FontWeight.Bold)
+                            }
+                            Slider(
+                                value = ballIdleAlpha,
+                                onValueChange = {
+                                    ballIdleAlpha = it
+                                    notifyUpdate()
+                                },
+                                valueRange = 0.15f..0.8f
                             )
                         }
 
-                        // 遮挡条演示
-                        Box(
-                            modifier = Modifier
-                                .width((barWidth * 0.7f).dp)
-                                .height((barHeight * 0.8f).dp)
-                                .clip(RoundedCornerShape(cornerRadius.dp))
-                                .background(selectedColor.copy(alpha = alphaValue))
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.White.copy(alpha = 0.2f),
-                                    shape = RoundedCornerShape(cornerRadius.dp)
-                                )
+                        Text(
+                            "💡 锁屏自愈逻辑：手机熄屏锁屏时浮窗自动休眠，解锁手机后自动收纳为侧边悬浮球待命，轻触即可随心呼出遮挡条！",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -354,9 +378,7 @@ fun SubtitleMaskScreen(
                             value = alphaValue,
                             onValueChange = {
                                 alphaValue = it
-                                if (isServiceRunning) {
-                                    onToggleService(true, alphaValue, selectedColor.toArgb(), barWidth, barHeight, cornerRadius)
-                                }
+                                notifyUpdate()
                             },
                             valueRange = 0.2f..1.0f
                         )
@@ -384,9 +406,7 @@ fun SubtitleMaskScreen(
                                         )
                                         .clickable {
                                             selectedColor = color
-                                            if (isServiceRunning) {
-                                                onToggleService(true, alphaValue, selectedColor.toArgb(), barWidth, barHeight, cornerRadius)
-                                            }
+                                            notifyUpdate()
                                         }
                                 )
                             }
@@ -406,9 +426,7 @@ fun SubtitleMaskScreen(
                             value = barWidth.toFloat(),
                             onValueChange = {
                                 barWidth = it.toInt()
-                                if (isServiceRunning) {
-                                    onToggleService(true, alphaValue, selectedColor.toArgb(), barWidth, barHeight, cornerRadius)
-                                }
+                                notifyUpdate()
                             },
                             valueRange = 160f..400f
                         )
@@ -426,9 +444,7 @@ fun SubtitleMaskScreen(
                             value = barHeight.toFloat(),
                             onValueChange = {
                                 barHeight = it.toInt()
-                                if (isServiceRunning) {
-                                    onToggleService(true, alphaValue, selectedColor.toArgb(), barWidth, barHeight, cornerRadius)
-                                }
+                                notifyUpdate()
                             },
                             valueRange = 30f..120f
                         )
@@ -447,9 +463,7 @@ fun SubtitleMaskScreen(
                             value = cornerRadius.toFloat(),
                             onValueChange = {
                                 cornerRadius = it.toInt()
-                                if (isServiceRunning) {
-                                    onToggleService(true, alphaValue, selectedColor.toArgb(), barWidth, barHeight, cornerRadius)
-                                }
+                                notifyUpdate()
                             },
                             valueRange = 0f..24f
                         )

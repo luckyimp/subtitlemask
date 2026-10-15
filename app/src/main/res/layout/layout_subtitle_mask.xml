@@ -22,6 +22,7 @@
         android:paddingHorizontal="4dp"
         android:paddingVertical="2dp">
 
+        <!-- 👁️ 透视原字幕 -->
         <ImageView
             android:id="@+id/btnPeek"
             android:layout_width="24dp"
@@ -30,12 +31,22 @@
             android:padding="3dp"
             android:src="@drawable/ic_eye" />
 
+        <!-- 🗕 最小化收起为侧边悬浮球 -->
+        <ImageView
+            android:id="@+id/btnMinimize"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="收起为悬浮球"
+            android:padding="3dp"
+            android:src="@drawable/ic_minimize" />
+
         <View
             android:layout_width="1dp"
             android:layout_height="14dp"
             android:layout_marginHorizontal="2dp"
             android:background="#44FFFFFF" />
 
+        <!-- ❌ 关闭服务 -->
         <ImageView
             android:id="@+id/btnClose"
             android:layout_width="24dp"

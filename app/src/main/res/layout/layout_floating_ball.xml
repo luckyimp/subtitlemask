@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootFloatingBall"
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:background="@drawable/bg_floating_ball">
+
+    <ImageView
+        android:id="@+id/ivBallIcon"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_gravity="center"
+        android:contentDescription="悬浮球"
+        android:src="@drawable/ic_floating_bubble" />
+
+    <View
+        android:id="@+id/dotActiveState"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="5dp"
+        android:background="@drawable/bg_status_dot" />
+
+</FrameLayout>
