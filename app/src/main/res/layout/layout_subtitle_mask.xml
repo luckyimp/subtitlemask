@@ -1,68 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
 
-    <!-- 主遮挡背景条 -->
-    <View
-        android:id="@+id/viewMaskBar"
+    <!-- 1. 上层功能区：中文字幕完全遮挡条 -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_margin="4dp" />
-
-    <!-- 顶部微型控制栏 -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_margin="6dp"
-        android:background="@drawable/bg_control_pill"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="4dp"
-        android:paddingVertical="2dp">
-
-        <!-- 👁️ 透视原字幕 -->
-        <ImageView
-            android:id="@+id/btnPeek"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:contentDescription="临时透视字幕"
-            android:padding="3dp"
-            android:src="@drawable/ic_eye" />
-
-        <!-- 🗕 最小化收起为侧边悬浮球 -->
-        <ImageView
-            android:id="@+id/btnMinimize"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:contentDescription="收起为悬浮球"
-            android:padding="3dp"
-            android:src="@drawable/ic_minimize" />
+        android:layout_height="wrap_content">
 
         <View
-            android:layout_width="1dp"
-            android:layout_height="14dp"
-            android:layout_marginHorizontal="2dp"
-            android:background="#44FFFFFF" />
+            android:id="@+id/viewMaskBar"
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
 
-        <!-- ❌ 关闭服务 -->
+        <!-- 右上角极简控制栏 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_control_pill"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="2dp">
+
+            <!-- 🔍 放大镜开关 -->
+            <ImageView
+                android:id="@+id/btnZoomToggle"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="切换放大镜"
+                android:padding="3dp"
+                android:src="@drawable/ic_resize" />
+
+            <!-- 👁️ 透视原字幕 -->
+            <ImageView
+                android:id="@+id/btnPeek"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="临时透视字幕"
+                android:padding="3dp"
+                android:src="@drawable/ic_eye" />
+
+            <!-- 🗕 最小化收起为侧边悬浮球 -->
+            <ImageView
+                android:id="@+id/btnMinimize"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="收起为悬浮球"
+                android:padding="3dp"
+                android:src="@drawable/ic_minimize" />
+
+            <!-- ❌ 关闭服务 -->
+            <ImageView
+                android:id="@+id/btnClose"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="关闭遮挡条"
+                android:padding="3dp"
+                android:src="@drawable/ic_close" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- 2. 下层功能区：英文字幕光学放大镜 (方案 A: MediaProjection 实时 GPU 像素缩放) -->
+    <FrameLayout
+        android:id="@+id/layoutMagnifier"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:background="#E6090D16">
+
+        <TextureView
+            android:id="@+id/textureMagnifier"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- 放大镜状态角标 -->
+        <TextView
+            android:id="@+id/tvScaleBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="3dp"
+            android:background="#CC06B6D4"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="1dp"
+            android:text="1.8× 光学透镜"
+            android:textColor="#FFFFFF"
+            android:textSize="9sp" />
+
         <ImageView
-            android:id="@+id/btnClose"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:contentDescription="关闭遮挡条"
-            android:padding="3dp"
-            android:src="@drawable/ic_close" />
-    </LinearLayout>
+            android:id="@+id/handleResize"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="bottom|end"
+            android:contentDescription="调整尺寸"
+            android:padding="2dp"
+            android:src="@drawable/ic_resize" />
+    </FrameLayout>
 
-    <ImageView
-        android:id="@+id/handleResize"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
-        android:layout_gravity="bottom|end"
-        android:contentDescription="拖动改变尺寸"
-        android:padding="3dp"
-        android:src="@drawable/ic_resize" />
-
-</FrameLayout>
+</LinearLayout>

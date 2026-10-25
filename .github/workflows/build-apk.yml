@@ -29,7 +29,6 @@ jobs:
 
       - name: Locate Project & Prepare Wrapper
         run: |
-          # 自动寻找包含 settings.gradle.kts 的目录（防止将解压后的子目录直接 push 造成路径错层）
           PROJ_DIR=$(find . -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1 | xargs dirname)
           if [ -z "$PROJ_DIR" ]; then
             PROJ_DIR="."
@@ -38,7 +37,6 @@ jobs:
           echo "Detected project root at: $PROJ_DIR"
           cd "$PROJ_DIR"
 
-          # 自动补全 gradle wrapper
           if [ ! -f "gradlew" ] || [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
             echo "Initializing Gradle wrapper..."
             gradle wrapper --gradle-version 8.9 --distribution-type bin
