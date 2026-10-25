@@ -2,6 +2,7 @@ package com.subtitlemask.app.service
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -26,7 +27,13 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import android.view.*
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.Surface
+import android.view.TextureView
+import android.view.View
+import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -35,7 +42,6 @@ import androidx.core.app.NotificationCompat
 import com.subtitlemask.app.MainActivity
 import com.subtitlemask.app.R
 import kotlin.math.abs
-import kotlin.math.max
 
 class SubtitleMaskService : Service() {
 
@@ -260,33 +266,31 @@ class SubtitleMaskService : Service() {
         val inflater = LayoutInflater.from(this)
         barOverlayView = inflater.inflate(R.layout.layout_subtitle_mask, null)
 
-        val maskBar = barOverlayView!!.findViewById<View>(R.id.viewMaskBar)
         val btnEye = barOverlayView!!.findViewById<ImageView>(R.id.btnPeek)
         val btnZoom = barOverlayView!!.findViewById<ImageView>(R.id.btnZoomToggle)
         val btnClose = barOverlayView!!.findViewById<ImageView>(R.id.btnClose)
         val btnMinimize = barOverlayView!!.findViewById<ImageView>(R.id.btnMinimize)
-        val handleResize = barOverlayView!!.findViewById<View>(R.id.handleResize)
 
         updateBarAppearance()
 
-        // 拖拽与缩放事件绑定
+        // 拖拽移动
         var initialX = 0
         var initialY = 0
-        var initialTouchX = 0f
-        var initialTouchY = 0f
+        var touchStartX = 0f
+        var touchStartY = 0f
 
         barOverlayView!!.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = barLayoutParams.x
                     initialY = barLayoutParams.y
-                    initialTouchX = event.rawX
-                    initialTouchY = event.rawY
+                    touchStartX = event.rawX
+                    touchStartY = event.rawY
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    barLayoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
-                    barLayoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
+                    barLayoutParams.x = initialX + (event.rawX - touchStartX).toInt()
+                    barLayoutParams.y = initialY + (event.rawY - touchStartY).toInt()
                     if (isBarAdded && barOverlayView != null) {
                         try {
                             windowManager.updateViewLayout(barOverlayView, barLayoutParams)

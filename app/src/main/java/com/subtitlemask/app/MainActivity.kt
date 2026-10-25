@@ -36,6 +36,20 @@ import androidx.compose.ui.unit.sp
 import com.subtitlemask.app.service.SubtitleMaskService
 import com.subtitlemask.app.ui.theme.SubtitleMaskTheme
 
+data class MaskParams(
+    val isRunning: Boolean = true,
+    val alpha: Float = 0.95f,
+    val color: Int = android.graphics.Color.BLACK,
+    val width: Int = 320,
+    val height: Int = 40,
+    val radius: Int = 12,
+    val showBall: Boolean = true,
+    val ballAlpha: Float = 0.35f,
+    val magEnabled: Boolean = true,
+    val magScale: Float = 1.8f,
+    val magHeight: Int = 38
+)
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var mediaProjectionManager: MediaProjectionManager
@@ -84,19 +98,19 @@ class MainActivity : ComponentActivity() {
                     SubtitleMaskScreen(
                         onRequestPermission = { checkAndRequestOverlayPermission() },
                         onRequestProjection = { requestProjectionPermission() },
-                        onToggleService = { isRunning, alpha, colorInt, width, height, radius, showBall, ballAlpha, magEnabled, magScale, magHeight ->
-                            if (isRunning) {
+                        onToggleService = { params ->
+                            if (params.isRunning) {
                                 val bundle = Bundle().apply {
-                                    putFloat("alpha", alpha)
-                                    putInt("color", colorInt)
-                                    putInt("width", width)
-                                    putInt("height", height)
-                                    putInt("radius", radius)
-                                    putBoolean("showBall", showBall)
-                                    putFloat("ballAlpha", ballAlpha)
-                                    putBoolean("magEnabled", magEnabled)
-                                    putFloat("magScale", magScale)
-                                    putInt("magHeight", magHeight)
+                                    putFloat("alpha", params.alpha)
+                                    putInt("color", params.color)
+                                    putInt("width", params.width)
+                                    putInt("height", params.height)
+                                    putInt("radius", params.radius)
+                                    putBoolean("showBall", params.showBall)
+                                    putFloat("ballAlpha", params.ballAlpha)
+                                    putBoolean("magEnabled", params.magEnabled)
+                                    putFloat("magScale", params.magScale)
+                                    putInt("magHeight", params.magHeight)
                                 }
                                 startMaskService(bundle)
                             } else {
@@ -143,7 +157,6 @@ class MainActivity : ComponentActivity() {
         } else {
             startService(serviceIntent)
         }
-        // 如果开启了光学放大镜，且尚未获得投影令牌，自动请求一次投影授权
         if (args.getBoolean("magEnabled", true)) {
             requestProjectionPermission()
         }
@@ -159,9 +172,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SubtitleMaskScreen(
-    onRequestPermission: () -> void = {},
-    onRequestProjection: () -> void = {},
-    onToggleService: (Boolean, Float, Int, Int, Int, Int, Boolean, Float, Boolean, Float, Int) -> Unit
+    onRequestPermission: () -> Unit = {},
+    onRequestProjection: () -> Unit = {},
+    onToggleService: (MaskParams) -> Unit
 ) {
     val context = LocalContext.current
     var hasPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
@@ -194,17 +207,19 @@ fun SubtitleMaskScreen(
     fun notifyUpdate() {
         if (isServiceRunning) {
             onToggleService(
-                true,
-                alphaValue,
-                selectedColor.toArgb(),
-                barWidth,
-                barHeight,
-                cornerRadius,
-                showFloatingBall,
-                ballIdleAlpha,
-                magnifierEnabled,
-                magnifierScale,
-                magnifierHeight
+                MaskParams(
+                    isRunning = true,
+                    alpha = alphaValue,
+                    color = selectedColor.toArgb(),
+                    width = barWidth,
+                    height = barHeight,
+                    radius = cornerRadius,
+                    showBall = showFloatingBall,
+                    ballAlpha = ballIdleAlpha,
+                    magEnabled = magnifierEnabled,
+                    magScale = magnifierScale,
+                    magHeight = magnifierHeight
+                )
             )
         }
     }
@@ -308,17 +323,19 @@ fun SubtitleMaskScreen(
                         }
                         isServiceRunning = checked
                         onToggleService(
-                            checked,
-                            alphaValue,
-                            selectedColor.toArgb(),
-                            barWidth,
-                            barHeight,
-                            cornerRadius,
-                            showFloatingBall,
-                            ballIdleAlpha,
-                            magnifierEnabled,
-                            magnifierScale,
-                            magnifierHeight
+                            MaskParams(
+                                isRunning = checked,
+                                alpha = alphaValue,
+                                color = selectedColor.toArgb(),
+                                width = barWidth,
+                                height = barHeight,
+                                radius = cornerRadius,
+                                showBall = showFloatingBall,
+                                ballAlpha = ballIdleAlpha,
+                                magEnabled = magnifierEnabled,
+                                magScale = magnifierScale,
+                                magHeight = magnifierHeight
+                            )
                         )
                     }
                 )
@@ -369,14 +386,28 @@ fun SubtitleMaskScreen(
                         Text("放大倍率：${magnifierScale}×")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(1.4f to "1.4×", 1.8f to "1.8× (推荐)", 2.2f to "2.2×").forEach { (scale, label) ->
-                                FilterChip(
-                                    selected = magnifierScale == scale,
-                                    onClick = {
-                                        magnifierScale = scale
-                                        notifyUpdate()
-                                    },
-                                    label = { Text(label) }
-                                )
+                                val isSelected = magnifierScale == scale
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
+                                            magnifierScale = scale
+                                            notifyUpdate()
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                         }
                     }

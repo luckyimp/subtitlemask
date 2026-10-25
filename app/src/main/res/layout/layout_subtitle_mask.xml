@@ -89,15 +89,6 @@
             android:text="1.8× 光学透镜"
             android:textColor="#FFFFFF"
             android:textSize="9sp" />
-
-        <ImageView
-            android:id="@+id/handleResize"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_gravity="bottom|end"
-            android:contentDescription="调整尺寸"
-            android:padding="2dp"
-            android:src="@drawable/ic_resize" />
     </FrameLayout>
 
 </LinearLayout>
